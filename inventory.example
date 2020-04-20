@@ -1,0 +1,15 @@
+[all]
+pi-1	 ansible_port=22 ansible_host=192.168.1.10 usb_quirks=152d:1561
+pi-2	 ansible_port=22 ansible_host=192.168.1.11 usb_quirks=152d:1561
+pi-3	 ansible_port=22 ansible_host=192.168.1.12 usb_quirks=152d:1561
+
+[master]
+pi-1
+
+[node]
+pi-2
+pi-3
+
+[k3s-cluster:children]
+master
+node

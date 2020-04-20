@@ -1,0 +1,26 @@
+- name: Get partition ids
+  command: lsblk -o name,label,partuuid
+  register: partition_ids
+  changed_when: false
+
+- name: Extract ids
+  set_fact:
+    interim_ssd_root_puuid: "{{ partition_ids.stdout | regex_findall('.*' + device_name + '\\w{1,2}\\s+rootfs\\s+([^\\s]+)') }}"
+    interim_ssd_boot_puuid: "{{ partition_ids.stdout | regex_findall('.*' + device_name + '\\w{1,2}\\s+boot\\s+([^\\s]+)') }}"
+    interim_mmc_root_puuid: "{{ partition_ids.stdout | regex_findall('.*' + mmc_device_name + '\\w{1,2}\\s+rootfs\\s+([^\\s]+)') }}"
+    interim_mmc_boot_puuid: "{{ partition_ids.stdout | regex_findall('.*' + mmc_device_name + '\\w{1,2}\\s+boot\\s+([^\\s]+)') }}"
+
+- name: Extract ids of mmc and ssd
+  set_fact:
+    ssd_root_puuid: "{{ '' if interim_ssd_root_puuid | length == 0 else interim_ssd_root_puuid[0] }}"
+    ssd_boot_puuid: "{{ '' if interim_ssd_boot_puuid | length == 0 else interim_ssd_boot_puuid[0] }}"
+    mmc_root_puuid: "{{ '' if interim_mmc_root_puuid | length == 0 else interim_mmc_root_puuid[0] }}"
+    mmc_boot_puuid: "{{ '' if interim_mmc_boot_puuid | length == 0 else interim_mmc_boot_puuid[0] }}"
+
+- debug:
+    msg: |
+      Extracted:
+        ssd_root_puuid: {{ ssd_root_puuid }}
+        ssd_boot_puuid: {{ ssd_boot_puuid }}
+        mmc_root_puuid: {{ mmc_root_puuid }}
+        mmc_boot_puuid: {{ mmc_boot_puuid }}

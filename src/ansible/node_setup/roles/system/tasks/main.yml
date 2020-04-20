@@ -1,0 +1,137 @@
+---
+
+# # Enable this if you run into issues updating
+# - name: Reset dpkg
+#   command: dpkg --configure -a
+
+- name: Sets the hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Upgrade all packages to the latest version
+  apt:
+    name: "*"
+    state: latest
+    # Need the force_apt_get until
+    # https://github.com/ansible/ansible/issues/56832
+    force_apt_get: true
+  register: apt_update
+  retries: 5
+  until: apt_update is success
+
+- name: Upgrade system
+  apt:
+    upgrade: dist
+    # Need the force_apt_get until
+    # https://github.com/ansible/ansible/issues/56832
+    force_apt_get: true
+  register: apt_upgrade
+  retries: 5
+  until: apt_upgrade is success
+
+- name: Clean up apt
+  apt:
+    autoremove: true
+    # Need the force_apt_get until
+    # https://github.com/ansible/ansible/issues/56832
+    force_apt_get: true
+
+- name: Copy unattended-upgrades configuration files in place
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/apt/apt.conf.d/{{ item }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - 10periodic
+    - 50unattended-upgrades
+
+# See: https://github.com/kubernetes/kubernetes/issues/71305
+#- name: Use iptables-legacy instead of nftables.
+#  alternatives:
+#    name: iptables
+#    path: /usr/sbin/iptables-legacy
+
+- name: Restart systemd-timesyncd service
+  systemd:
+    name: systemd-timesyncd
+    enabled: true
+    state: restarted
+
+- name: Enable systemd-timesyncd service and assure it is started
+  systemd:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+
+- name: Create a firmware folder if it does not exist
+  file:
+    path: /boot/firmware
+    state: directory
+    mode: '0755'
+
+- name: Create the config files if they do not exist
+  file:
+    path: "{{ item }}"
+    state: touch
+  with_items:
+    - /boot/firmware/nobtcmd.txt
+    - /boot/firmware/syscfg.txt
+
+- name: Disable WiFi
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE WIFI"
+    block: |
+      dtoverlay=pi3-disable-wifi
+  when: deploy_target != 'vagrant'
+
+- name: Disable Bluetooth
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE BLUETOOTH"
+    block: |
+      dtoverlay=pi3-disable-bt
+  when: deploy_target != 'vagrant'
+
+- name: Disable HDMI
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE HDMI"
+    block: |
+      hdmi_blanking=2
+  when: deploy_target != 'vagrant'
+
+- name: Disable Audio
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE AUDIO"
+    block: |
+      dtparam=audio=off
+  when: deploy_target != 'vagrant'
+
+- name: Disable Uart
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE UART"
+    block: |
+      enable_uart=0
+  when: deploy_target != 'vagrant'
+
+- name: Trottle GPU
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE THROTTLE GPU"
+    block: |
+      gpu_mem=16
+  when: deploy_target != 'vagrant'
+
+#- name: Overclock CPU
+#  blockinfile:
+#    path: /boot/firmware/syscfg.txt
+#    marker: "# {mark} ANSIBLE OVERCLOCK CPU"
+#    block: |
+#      over_voltage=2
+#      arm_freq=1750
+#  when: deploy_target != 'vagrant'

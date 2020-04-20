@@ -1,0 +1,17 @@
+- name: Create ssd directory
+  file:
+    path: ~/downloads/raspbian/
+    state: directory
+    mode: '0755'
+
+- name: Check if raspbian already downloaded
+  stat:
+    path: ~/downloads/raspbian/{{ raspbian_version }}.zip
+  register: raspbian_zip
+
+- name: Download
+  get_url:
+    url: https://downloads.raspberrypi.org/raspbian_lite/images/{{ raspbian_image_location }}/{{ raspbian_version }}.zip
+    dest: ~/downloads/raspbian/
+    mode: '660'
+  when: raspbian_zip.stat.exists == False

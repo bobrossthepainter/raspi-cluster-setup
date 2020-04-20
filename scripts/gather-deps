@@ -1,0 +1,9 @@
+#! /bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+echo "Loading k3s version ${K3S_VERSION} from https://github.com/rancher/k3s/archive/${K3S_VERSION_ZIP}.zip ..."
+
+mkdir -p $DIR/../tmp
+curl -Ls https://github.com/rancher/k3s/archive/${K3S_VERSION}.zip > $DIR/../tmp/k3s.zip
+unzip -q $DIR/../tmp/k3s.zip -d $DIR/../tmp/k3s

@@ -1,0 +1,7 @@
+#! /bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+$DIR/.ansible-run.sh \
+  -e "k3s_version=${K3S_VERSION}" \
+  $DIR/../target/k3s-ansible/site.yml $@

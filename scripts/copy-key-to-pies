@@ -1,0 +1,12 @@
+#! /bin/bash
+
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+INVENTORY=$(cat $DIR/../inventory)
+REGEX_IP="ansible_host=(\S+)"
+while [[ $INVENTORY =~ ($REGEX_IP) ]]; do
+  echo "${BASH_REMATCH[2]}"
+  INVENTORY=${INVENTORY#*"${BASH_REMATCH[2]}"}
+  sshpass -p "$PI_PASSWORD" ssh-copy-id -i .secrets/id_rsa -o StrictHostKeyChecking=no ${PI_LOGIN}@192.168.178.172
+done

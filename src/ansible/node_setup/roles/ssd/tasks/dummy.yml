@@ -1,0 +1,11 @@
+- name: Adjust boot partition '/mnt/ssd/etc/fstab' in {{ ssd_dev_path_root }}
+  replace:
+    path: /mnt/ssd/etc/fstab
+    regexp: "(PARTUUID=)(\\S+)(\\s+\\/boot)"
+    replace: "PARTUUID={{ mmc_boot_puuid }}\\3"
+
+- name: Adjust root partition '/mnt/ssd/etc/fstab' in {{ ssd_dev_path_root }}
+  replace:
+    path: /mnt/ssd/etc/fstab
+    regexp: "(PARTUUID=)(\\S+)(\\s+\\/\\s+)"
+    replace: "PARTUUID={{ ssd_root_puuid }}\\3"

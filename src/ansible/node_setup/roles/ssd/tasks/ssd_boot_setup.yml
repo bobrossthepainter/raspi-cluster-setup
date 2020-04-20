@@ -1,0 +1,216 @@
+- name: Check if {{ ssd_dev_path }} device is partitioned
+  set_fact:
+    correctly_partitioned: "{{ ansible_devices[device_name].partitions | length == 2 and ssd_root_puuid != '' and ssd_boot_puuid != ''}}"
+
+- name: Partition ssd
+  block:
+    - name: Create working directory
+      file:
+        path: /work
+        state: directory
+        mode: '0755'
+
+    - name: Check if raspbian image already transmitted
+      stat:
+        path: /work/{{ raspbian_version }}.zip
+      register: raspbian_node_zip
+
+    - name: Copying raspbian image to remote host
+      copy:
+        src: ~/downloads/raspbian/{{ raspbian_version }}.zip
+        dest: /work/{{ raspbian_version }}.zip
+        owner: pi
+        group: pi
+        mode: 0644
+      when: raspbian_node_zip.stat.exists == False
+
+    - name: Check if raspbian image already unzipped
+      stat:
+        path: /work/{{ raspbian_version }}.img
+      register: raspbian_node_img
+
+    - name: Unzip
+      unarchive:
+        src: /work/{{ raspbian_version }}.zip
+        dest: /work/
+        remote_src: yes
+      when: raspbian_node_img.stat.exists == False
+
+    - name: Write raspbian image to {{ ssd_dev_path }}
+      raw: "dd bs=4M if=/work/{{ raspbian_version }}.img of={{ ssd_dev_path }} status=progress conv=fsync"
+
+    - name: Refresh partition table
+      command: partprobe
+      changed_when: false
+
+    - name: wait for updated partition table
+      shell: lsblk -o name
+      register: result
+      until: result.stdout.find(device_name_and_boot_partition_index) != -1
+      retries: 25
+      delay: 10
+
+    - name: Refresh partition ids
+      include: "{{ role_path }}/tasks/extract_puuids.yml"
+      static: no
+      until: ssd_root_puuid != "" and ssd_boot_puuid != ""
+      retries: 25
+      delay: 10
+
+  when: correctly_partitioned == False or reset_node == True
+
+- assert:
+    that:
+      - ssd_root_puuid != ""
+      - ssd_boot_puuid != ""
+    fail_msg: "Error ssd not yet or correctly initialized"
+
+- name: Check if new partition id needs to be generated
+  set_fact:
+    generate_new_puuids: "{{ mmc_boot_puuid == ssd_boot_puuid }}"
+
+- name: Generate new Partition id for ssd
+  block:
+    - name: Generate new PARTUUID for {{ ssd_dev_path }}
+      raw: "hexdump -n 4 -e '\"%08X\"' /dev/random | tr [A-Z] [a-z]"
+      register: new_partuuid
+
+    - name: Apply PARTUUID {{ new_partuuid.stdout }} for {{ ssd_dev_path }}
+      raw: |
+        fdisk "{{ ssd_dev_path }}" <<EOF &> /dev/null
+        p
+        x
+        i
+        0x{{ new_partuuid.stdout }}
+        r
+        p
+        w
+        EOF
+      register: fdisk_output
+      until: fdisk_output.stdout != ""
+      retries: 5
+      delay: 20
+
+    - debug:
+        msg: "output: {{ fdisk_output.stdout }}"
+
+    - name: Refresh partition table
+      command: partprobe
+      changed_when: false
+
+    - name: wait for updated partition table
+      shell: lsblk -o partuuid
+      register: result
+      until: result.stdout.find(new_partuuid.stdout) != -1
+      retries: 25
+      delay: 10
+
+    - name: Refresh partition ids
+      include: "{{ role_path }}/tasks/extract_puuids.yml"
+      static: no
+      until: ssd_root_puuid != mmc_root_puuid and ssd_boot_puuid != mmc_boot_puuid
+
+    - assert:
+        that:
+          - ssd_root_puuid != "" and ssd_root_puuid != mmc_root_puuid
+          - ssd_boot_puuid != "" and ssd_boot_puuid != mmc_boot_puuid
+        fail_msg: "Error during application of new part-uuid {{ new_partuuid.stdout }} to {{ ssd_dev_path }}.\n fdisk-Log: {{ fdisk_output.stdout }}"
+        success_msg: "New part-uuid {{ new_partuuid.stdout }} successfully applied to {{ ssd_dev_path }}"
+  when: generate_new_puuids
+
+- name: Read updated device information of {{ ssd_dev_path }}
+  parted: device={{ ssd_dev_path }} unit=MiB
+  register: device_info
+
+- name: Check if root partition has been expanded on {{ ssd_dev_path_root }}
+  set_fact:
+    expanded: "{{ device_info.partitions[1].size > 10000 }}"
+
+- name: Expand partition
+  block:
+    - name: Expand partition on {{ ssd_dev_path_root }}
+      command: parted {{ ssd_dev_path }} resizepart 2 100%
+
+    - name: Resize filesystem on partition {{ ssd_dev_path_root }}
+      command: resize2fs {{ ssd_dev_path_root }}
+  when: expanded == False
+
+- name: Adjust root partition in /boot/cmdline.txt
+  replace:
+    path: /boot/cmdline.txt
+    regexp: 'root=(\S+)'
+    replace: "root=PARTUUID={{ ssd_root_puuid }}"
+
+- name: Add quirks to /boot/cmdline.txt
+  replace:
+    path: /boot/cmdline.txt
+    regexp: '^(usb-storage\.quirks\S+\s|)(.+)'
+    replace: 'usb-storage.quirks={{ usb_quirks }}:u \2'
+  when: usb_quirks is defined and usb_quirks != ""
+
+- name: Create ssh file in /mnt/ssd/boot/
+  copy:
+    content: ""
+    dest: /boot/ssh
+    mode: 0666
+
+- name: Create ssd mount directory '/mnt/ssd/root'
+  file:
+    path: /mnt/ssd/root
+    state: directory
+    mode: '0755'
+
+- name: Mount ssd {{ ssd_dev_path_root }}
+  mount:
+    path: /mnt/ssd/root
+    src: "{{ ssd_dev_path_root }}"
+    fstype: ext4
+    boot: no
+    state: mounted
+
+- name: Adjust boot partition '/mnt/ssd/root/etc/fstab' in {{ ssd_dev_path_root }}
+  replace:
+    path: /mnt/ssd/root/etc/fstab
+    regexp: "(PARTUUID=)(\\S+)(\\s+\\/boot)"
+    replace: "PARTUUID={{ mmc_boot_puuid }}\\3"
+
+- name: Adjust root partition '/mnt/ssd/root/etc/fstab' in {{ ssd_dev_path_root }}
+  replace:
+    path: /mnt/ssd/root/etc/fstab
+    regexp: "(PARTUUID=)(\\S+)(\\s+\\/\\s+)"
+    replace: "PARTUUID={{ ssd_root_puuid }}\\3"
+
+- name: Create ssh mount directory '/mnt/ssd/root/home/pi/.ssh/'
+  file:
+    path: /mnt/ssd/root/home/pi/.ssh/
+    state: directory
+    owner: pi
+    group: pi
+    mode: '0700'
+
+- name: Copy .ssh contents
+  copy:
+    src: /home/pi/.ssh/
+    remote_src: yes
+    dest: /mnt/ssd/root/home/pi/.ssh/
+    owner: pi
+    group: pi
+    mode: '0700'
+
+- name: Unarm '/usr/lib/raspi-config/init_resize.sh' script
+  raw: "echo '#!/bin/sh' > /mnt/ssd/root/usr/lib/raspi-config/init_resize.sh"
+
+- name: Unmount ssd root {{ ssd_dev_path_root }}
+  mount:
+    path: /mnt/ssd/root
+    state: unmounted
+
+- name: "restart machine"
+  reboot:
+    msg: "Reboot by Ansible, because /boot/cmdline.txt config changed."
+    reboot_timeout: 180   # (= 3 minutes)
+
+- name: "restart machine after initialized new root system "
+  reboot:
+    msg: "Reboot due to initialization"
+    reboot_timeout: 180   # (= 3 minutes)

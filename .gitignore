@@ -1,0 +1,14 @@
+# ide
+.idea/
+
+# config
+.config
+.encryption
+.home
+inventory
+
+# build
+images/
+target/
+tmp/
+tmp.key

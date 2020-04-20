@@ -1,0 +1,53 @@
+- name: get ssd device name
+  set_fact:
+    device_name: "{{ item.key }}"
+    device_name_and_partition_index: "{{ item.key }}2"
+    device_name_and_boot_partition_index: "{{ item.key }}1"
+    ssd_dev_path: /dev/{{ item.key }}
+    ssd_dev_path_root: /dev/{{ item.key }}2
+    ssd_dev_path_boot: /dev/{{ item.key }}1
+  no_log: True
+  with_dict: "{{ ansible_devices }}"
+  when: item.value.vendor and item.value.vendor.startswith('SABRENT')
+
+- name: get mmc device name
+  set_fact:
+    mmc_device_name: "{{ item.key }}"
+  no_log: True
+  with_dict: "{{ ansible_devices }}"
+  when: item.key.startswith('mmc')
+
+#- name: show all values for selected device name
+#  debug: var=ansible_devices[device_name]
+
+- name: Refresh partition ids
+  include: "{{ role_path }}/tasks/extract_puuids.yml"
+  static: no
+
+- name: Read /proc/cmdline
+  shell: cat /proc/cmdline
+  register: initial_boot_cmdline
+  changed_when: false
+
+- name: Extract partition
+  set_fact:
+    cmdline_root_puuid: "{{ initial_boot_cmdline.stdout | regex_findall('.+root=PARTUUID=(\\S+)\\s.+') | first }}"
+
+- name: Check if ssd already root partition and ssd id different to mmc id
+  set_fact:
+    ssd_is_root: "{{ cmdline_root_puuid == ssd_root_puuid and ssd_root_puuid != mmc_root_puuid }}"
+
+- debug:
+    msg: "SSD is already root partition"
+  when: ssd_is_root
+
+- name: Check if node should be resetted
+  set_fact:
+    reset_node: "{{ (reset_nodes is defined) and ( inventory_hostname in reset_nodes ) }}"
+  changed_when: reset_node == True
+
+- name: Setup SSD-Device {{ ssd_dev_path }}
+  #  include: "dummy.yml"
+  include: "ssd_boot_setup.yml"
+  static: no
+  when: ( ssd_is_root == False ) or ( reset_node == True )

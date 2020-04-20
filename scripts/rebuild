@@ -1,0 +1,11 @@
+#! /bin/bash
+
+set -e
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+$DIR/clean
+$DIR/gather-deps
+$DIR/compile
+$DIR/ansible-k8s
+$DIR/ansible-post

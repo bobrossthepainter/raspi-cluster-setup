@@ -1,0 +1,17 @@
+- name: Add quirks to /boot/cmdline.txt
+  replace:
+    path: /boot/cmdline.txt
+    regexp: '^(usb-storage\.quirks\S+\s|)(.+)'
+    replace: 'usb-storage.quirks={{ usb_quirks }}:u \2'
+  when: usb_quirks is defined and usb_quirks != ""
+  register: quirks_activated
+
+- name: Sets the hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: reboot machine
+  reboot:
+    msg: "Reboot by Ansible, because /boot/cmdline.txt config changed."
+    reboot_timeout: 180   # (= 3 minutes)
+  when: quirks_activated.changed
