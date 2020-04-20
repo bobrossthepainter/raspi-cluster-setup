@@ -16,7 +16,7 @@ Thanks to the raspbernetes group for providing multi-arch images -> https://gith
 Playbooks:
 * node_setup
 * k3s-ansible
-* k3s-init
+* k3s-init // in work
 
 ## Prerequisites
 * The repo uses git-crypt, make sure to have it installed on your machine (e.a. apt-get install git-crypt)
@@ -24,7 +24,7 @@ Playbooks:
 * Copy/rename `.config.example` file to `.config` and adjust to your needs
 * Copy/rename `.inventory.example` file to `.inventory` and adjust to your infra-setup
     * The `usb_quirks=152d:1561` part in the inventory is handling the issue with some sata usb-controllers [LINK](https://www.raspberrypi.org/forums/viewtopic.php?t=245931). 
-    You can leave the variable out, if your used controller doesn't have a problem here.
+    You can leave the variable out, if your usb/sata-controller doesn't have the linked problem.
 
 ## Setup
 There has been a Docker workbench prepared which provides all the necessary tools in order to execute the ansible 
@@ -37,4 +37,4 @@ Enter the workbench `./workbench.sh` and then execute:
 * `scripts/compile` -> moves all the playbooks in the `target/` folder, applies some patch to k3s-ansible
 * `scripts/ansible-node-setup` -> playbook 1
 * `scripts/ansible-k3s` -> playbook 2
-* `scripts/ansible-k3s-init` -> playbook 3
+* `scripts/ansible-k3s-init` -> playbook 3  // in work
