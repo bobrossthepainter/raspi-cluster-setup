@@ -62,10 +62,6 @@ IMG=$(docker build ./.workbench \
     --network host )
 
 docker run --rm \
-    --net=host \
-    -u $(id -u):$(id -g) \
-    -v /etc/passwd:/etc/passwd \
-    -v /etc/group:/etc/group \
     -v $DIR:/work \
     -v $DIR/.home:$HOME \
     -e SECRETS_KEY="$SECRETS_KEY" \
