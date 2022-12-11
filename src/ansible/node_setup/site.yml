@@ -1,13 +1,12 @@
 ---
-
-- hosts: 127.0.0.1
-  connection: local
-  become: false
-  gather_facts: false
-  roles:
-    - role: download_raspbian
-      tags:
-        - prep_ssd
+# - hosts: 127.0.0.1
+#   connection: local
+#   become: false
+#   gather_facts: false
+#   roles:
+#     - role: download_raspbian
+#       tags:
+#         - prep_ssd
 
 - hosts: k3s-cluster:children
   vars:
@@ -15,12 +14,12 @@
   gather_facts: yes
   become: yes
   roles:
-    - role: prereq
-      tags:
-        - prep_ssd
-    - role: ssd
-      tags:
-        - ssd_as_root
+    # - role: prereq
+    #   tags:
+    #     - prep_ssd
+    # - role: ssd
+    #   tags:
+    #     - ssd_as_root
     - role: system
       tags:
         - system_setup

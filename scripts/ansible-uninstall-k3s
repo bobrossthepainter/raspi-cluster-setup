@@ -4,4 +4,4 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 $DIR/.ansible-run.sh \
   -e "k3s_version=${K3S_VERSION}" \
-  $DIR/../src/k3s_setup/site.yml $@
+  $DIR/../src/k3s-ansible/reset.yml $@

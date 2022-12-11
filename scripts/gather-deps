@@ -2,8 +2,15 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-echo "Loading k3s version ${K3S_VERSION} from https://github.com/rancher/k3s/archive/${K3S_VERSION_ZIP}.zip ..."
+echo "Loading k3s ansible script from https://github.com/k3s-io/k3s-ansible/archive/refs/heads/master.zip ..."
 
 mkdir -p $DIR/../tmp
-curl -Ls https://github.com/rancher/k3s/archive/${K3S_VERSION}.zip > $DIR/../tmp/k3s.zip
+curl -Ls https://github.com/k3s-io/k3s-ansible/archive/refs/heads/master.zip > $DIR/../tmp/k3s.zip
 unzip -q $DIR/../tmp/k3s.zip -d $DIR/../tmp/k3s
+
+K3S=$DIR/../src/k3s_setup
+mkdir -p $K3S
+cp -Rv $DIR/../tmp/k3s/k3s-ansible-master/* $K3S/
+
+# Patches
+sed -i 's/{{ k3s_version }}/{{ k3s_version | urlencode() }}/g' $K3S/roles/download/tasks/main.yml

@@ -1,0 +1,28 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      web:
+        nodePort: 80
+      websecure:
+        nodePort: 443
+    service:
+      ipFamilies:
+        - IPv4
+        - IPv6
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
+        allowExternalNameServices: true
+      kubernetesIngress:
+        allowExternalNameServices: true
+        allowEmptyServices: true
+    additionalArguments:
+      - "--certificatesresolvers.le.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.le.acme.tlschallenge"
+      - "--certificatesresolvers.le.acme.email=mail@roblang.de"
+      - "--certificatesresolvers.le.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"

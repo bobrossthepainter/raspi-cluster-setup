@@ -63,14 +63,14 @@ IMG=$(docker build ./.workbench \
 
 docker run --rm \
     -v $DIR:/work \
-    -v $DIR/.home:$HOME \
+    -v $DIR/.home:$DOCKER_HOME_DIR \
+    -v $HOME/.kube:$DOCKER_HOME_DIR/.kube \
     -e SECRETS_KEY="$SECRETS_KEY" \
     -e PI_LOGIN="$PI_LOGIN" \
     -e PI_PASSWORD="$PI_PASSWORD" \
     -e K8S_HOST="$K8S_HOST" \
     -e SSH_HOST="$SSH_HOST" \
     -e K3S_VERSION="$K3S_VERSION" \
-    -e K3S_VERSION_ZIP="$K3S_VERSION_ZIP" \
     -e RASPBIAN_VERSION="$RASPBIAN_VERSION" \
     -e RASPBIAN_IMAGE_LOCATION="$RASPBIAN_IMAGE_LOCATION" \
     -e ANSIBLE_HOST_KEY_CHECKING="False" \

@@ -1,0 +1,28 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      annotations:
+        metallb.universe.tf/address-pool: core-pool
+      ipFamilies:
+        - IPv4
+        - IPv6
+      externalIPs:
+        - 192.168.178.230
+        - fd00::230
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
+        allowExternalNameServices: true
+      kubernetesIngress:
+        allowExternalNameServices: true
+        allowEmptyServices: true
+    additionalArguments:
+      - "--certificatesresolvers.le.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.le.acme.tlschallenge"
+      - "--certificatesresolvers.le.acme.email=mail@roblang.de"
+      - "--certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"

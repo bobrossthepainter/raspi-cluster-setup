@@ -5,15 +5,4 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 echo "Compiling configuration..."
-K3S=$DIR/../target/k3s-ansible
-mkdir -p $K3S
-cp -Rv $DIR/../tmp/k3s/${K3S_VERSION_ZIP}/contrib/ansible/* $K3S/
 cp $DIR/../inventory $DIR/../target/inventory
-cp $DIR/../src/ansible/k3s/* $DIR/../target/k3s-ansible -Rv
-
-# Patches
-sed -i 's/{{ k3s_version }}/{{ k3s_version | urlencode() }}/g' $DIR/../target/k3s-ansible/roles/download/tasks/main.yml
-
-
-mkdir -p $DIR/../target/node_setup
-cp $DIR/../src/ansible/node_setup/* $DIR/../target/node_setup -Rv

@@ -13,7 +13,7 @@ RUN curl https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz -o /tmp/hel
     mkdir -p /tmp/helm && \
     tar -xvvf /tmp/helm.tar.gz -C /tmp/helm && \
     mv /tmp/helm/linux-amd64/helm /usr/local/bin && \
-    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+    helm repo add stable https://charts.helm.sh/stable
 
 RUN mkdir -p /etc/ansible
 ADD ansible.cfg /etc/ansible/ansible.cfg

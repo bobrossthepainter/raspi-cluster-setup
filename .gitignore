@@ -6,6 +6,7 @@
 .encryption
 .home
 inventory
+inventory.full
 
 # build
 images/
