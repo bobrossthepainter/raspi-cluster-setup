@@ -7,9 +7,21 @@
     owner: root
     group: root
     mode: 0644
+  when: "'master_primary' in group_names"
+
+- name: Copy K3s secondary service file
+  register: k3s_service
+  template:
+    src: "k3s_secondary.service.j2"
+    dest: "{{ systemd_dir }}/k3s.service"
+    owner: root
+    group: root
+    mode: 0644
+  when: "'master_primary' not in group_names"
 
 - name: Ensures /var/lib/rancher/k3s/server/manifests dir exists
   file: path=/var/lib/rancher/k3s/server/manifests state=directory
+  when: "'master_primary' in group_names"
 
 - name: Copy traefik helm config file
   template:
@@ -18,6 +30,16 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: 0644
+  when: "'master_primary' in group_names"
+
+- name: Copy kubevip config file
+  template:
+    src: "kubevip-config.yaml"
+    dest: "/var/lib/rancher/k3s/server/manifests/kubevip-config.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0644
+  when: "'master_primary' in group_names"
 
 - name: Enable and check K3s service
   systemd:
@@ -26,33 +48,73 @@
     state: restarted
     enabled: yes
 
+- name: Wait for control-plane-token
+  wait_for:
+    path: "{{ k3s_server_location }}/server/token"
+  when: "'master_primary' in group_names"
+
+- name: Register control-plane-token file access mode
+  stat:
+    path: "{{ k3s_server_location }}/server/token"
+  register: control_plane_token_mode
+  when: "'master_primary' in group_names"
+
+- name: Change file access control-plane-token
+  file:
+    path: "{{ k3s_server_location }}/server/token"
+    mode: "g+rx,o+rx"
+  when: "'master_primary' in group_names"
+
+- name: Read control-plane-token from master
+  slurp:
+    path: "{{ k3s_server_location }}/server/token"
+  register: control_plane_token
+  when: "'master_primary' in group_names"
+
+- name: Store Master control-plane-token
+  set_fact:
+    c_token: "{{ control_plane_token.content | b64decode | regex_replace('\n', '') }}"
+  when: "'master_primary' in group_names"
+
+- name: Restore control-plane-token file access
+  file:
+    path: "{{ k3s_server_location }}/server/token"
+    mode: "{{ control_plane_token_mode.stat.mode }}"
+  when: "'master_primary' in group_names"
+
 - name: Wait for node-token
   wait_for:
     path: "{{ k3s_server_location }}/server/node-token"
+  when: "'master_primary' in group_names"
 
 - name: Register node-token file access mode
   stat:
     path: "{{ k3s_server_location }}/server/node-token"
   register: p
+  when: "'master_primary' in group_names"
 
 - name: Change file access node-token
   file:
     path: "{{ k3s_server_location }}/server/node-token"
     mode: "g+rx,o+rx"
+  when: "'master_primary' in group_names"
 
 - name: Read node-token from master
   slurp:
     path: "{{ k3s_server_location }}/server/node-token"
   register: node_token
+  when: "'master_primary' in group_names"
 
 - name: Store Master node-token
   set_fact:
     token: "{{ node_token.content | b64decode | regex_replace('\n', '') }}"
+  when: "'master_primary' in group_names"
 
 - name: Restore node-token file access
   file:
     path: "{{ k3s_server_location }}/server/node-token"
     mode: "{{ p.stat.mode }}"
+  when: "'master_primary' in group_names"
 
 - name: Create directory .kube
   file:
@@ -60,6 +122,7 @@
     state: directory
     owner: "{{ ansible_user }}"
     mode: "u=rwx,g=rx,o="
+  when: "'master_primary' in group_names"
 
 - name: Copy config file to user home directory
   copy:
@@ -68,13 +131,15 @@
     remote_src: yes
     owner: "{{ ansible_user }}"
     mode: "u=rw,g=,o="
+  when: "'master_primary' in group_names"
 
-- name: Replace https://localhost:6443 by https://master-ip:6443
+- name: Replace https://localhost:6443 by https://{{ vip_ip }}:6443
   command: >-
     k3s kubectl config set-cluster default
-      --server=https://{{ master_ip }}:6443
+      --server=https://{{ vip_ip }}:6443
       --kubeconfig ~{{ ansible_user }}/.kube/config
   changed_when: true
+  when: "'master_primary' in group_names"
 
 - name: Create kubectl symlink
   file:

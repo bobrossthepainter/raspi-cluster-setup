@@ -6,14 +6,12 @@ metadata:
 spec:
   valuesContent: |-
     service:
-      annotations:
-        metallb.universe.tf/address-pool: core-pool
       ipFamilies:
         - IPv4
-        - IPv6
       externalIPs:
         - 192.168.178.230
-        - fd00::230
+      spec:
+        loadBalancerIP: 192.168.178.230
     providers:
       kubernetesCRD:
         allowCrossNamespace: true

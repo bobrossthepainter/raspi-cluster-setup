@@ -8,9 +8,9 @@ mkdir -p $DIR/../tmp
 curl -Ls https://github.com/k3s-io/k3s-ansible/archive/refs/heads/master.zip > $DIR/../tmp/k3s.zip
 unzip -q $DIR/../tmp/k3s.zip -d $DIR/../tmp/k3s
 
-K3S=$DIR/../src/k3s_setup
+K3S=$DIR/../src/ansible/k3s_setup
 mkdir -p $K3S
-cp -Rv $DIR/../tmp/k3s/k3s-ansible-master/* $K3S/
+cp -Rfv $DIR/../tmp/k3s/k3s-ansible-master/* $K3S/
 
 # Patches
 sed -i 's/{{ k3s_version }}/{{ k3s_version | urlencode() }}/g' $K3S/roles/download/tasks/main.yml

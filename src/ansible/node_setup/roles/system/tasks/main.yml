@@ -33,6 +33,11 @@
     name: pigpio
     state: present
 
+- name: Install pigpio
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+
 - name: Install open-iscsi
   ansible.builtin.apt:
     name: open-iscsi

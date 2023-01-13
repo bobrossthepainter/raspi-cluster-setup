@@ -73,6 +73,7 @@ docker run --rm \
     -e K3S_VERSION="$K3S_VERSION" \
     -e RASPBIAN_VERSION="$RASPBIAN_VERSION" \
     -e RASPBIAN_IMAGE_LOCATION="$RASPBIAN_IMAGE_LOCATION" \
+    -e VIP_IP="$VIP_IP" \
     -e ANSIBLE_HOST_KEY_CHECKING="False" \
     -e ANSIBLE_SSH_ARGS="-o ControlMaster=auto -o ControlPersist=60s -o userknownhostsfile=/dev/null" \
     -w /work \

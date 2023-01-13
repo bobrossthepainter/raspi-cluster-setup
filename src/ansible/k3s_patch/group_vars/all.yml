@@ -1,5 +1,0 @@
-ansible_user: pi
-systemd_dir: /etc/systemd/system
-master_ip: "{{ hostvars[groups['master'][0]]['ansible_host'] | default(groups['master'][0]) }}"
-extra_server_args: --disable servicelb --node-ip {{ hostvars[groups['master'][0]]['ansible_host'] }},{{ hostvars[groups['master'][0]]['node_ipv6'] }} --kubelet-arg "--node-ip=0.0.0.0" --cluster-cidr 10.42.0.0/16,2001:cafe:42:0::/56 --service-cidr 10.43.0.0/16,2001:cafe:42:1::/112 --kube-apiserver-arg --service-node-port-range=80-32767
-extra_agent_args: --node-ip {{ ansible_host }},{{ node_ipv6 }} --kubelet-arg "--node-ip=0.0.0.0"
