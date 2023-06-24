@@ -1,10 +1,9 @@
 #! /bin/bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-
 $DIR/.ansible-run.sh \
   -e "raspbian_version=${RASPBIAN_VERSION}" \
   -e "raspbian_image_location=${RASPBIAN_IMAGE_LOCATION}" \
-  $DIR/../src/node_setup/site.yml \
+  $DIR/../src/ansible/node_setup/site.yml \
   $@
 #  -e "reset_nodes=pi-btc" \

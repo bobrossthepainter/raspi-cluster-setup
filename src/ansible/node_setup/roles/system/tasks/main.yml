@@ -28,12 +28,7 @@
   retries: 5
   until: apt_upgrade is success
 
-- name: Install pigpio
-  ansible.builtin.apt:
-    name: pigpio
-    state: present
-
-- name: Install pigpio
+- name: Install nfs-common
   ansible.builtin.apt:
     name: nfs-common
     state: present
@@ -49,12 +44,6 @@
     # Need the force_apt_get until
     # https://github.com/ansible/ansible/issues/56832
     force_apt_get: true
-
-- name: Enalble gpio pins remote access
-  ansible.builtin.systemd:
-    name: pigpiod
-    state: started
-    enabled: yes
 
 - name: Copy unattended-upgrades configuration files in place
   copy:
@@ -84,80 +73,3 @@
     name: systemd-timesyncd
     enabled: true
     state: started
-
-- name: Enable required cgroup features.
-  lineinfile:
-    path: /boot/cmdline.txt
-    backrefs: True
-    regexp: '(^.+rootwait(\s+(?!cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory)[\w=/\-\.]+)*)\s*$'
-    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
-    state: present
-
-- name: Create a firmware folder if it does not exist
-  file:
-    path: /boot/firmware
-    state: directory
-    mode: "0755"
-
-- name: Create the config files if they do not exist
-  file:
-    path: "{{ item }}"
-    state: touch
-  with_items:
-    - /boot/firmware/nobtcmd.txt
-    - /boot/firmware/syscfg.txt
-
-- name: Disable WiFi
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE DISABLE WIFI"
-    block: |
-      dtoverlay=pi3-disable-wifi
-
-- name: Disable Bluetooth
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE DISABLE BLUETOOTH"
-    block: |
-      dtoverlay=pi3-disable-bt
-  when: ansible_hostname != 'pi-eth'
-
-- name: Disable HDMI
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE DISABLE HDMI"
-    block: |
-      hdmi_blanking=2
-
-- name: Disable Audio
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE DISABLE AUDIO"
-    block: |
-      dtparam=audio=off
-
-- name: Disable Uart
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE DISABLE UART"
-    block: |
-      enable_uart=0
-
-- name: Trottle GPU
-  blockinfile:
-    path: /boot/firmware/syscfg.txt
-    marker: "# {mark} ANSIBLE THROTTLE GPU"
-    block: |
-      gpu_mem=16
-#- name: Overclock CPU
-#  blockinfile:
-#    path: /boot/firmware/syscfg.txt
-#    marker: "# {mark} ANSIBLE OVERCLOCK CPU"
-#    block: |
-#      over_voltage=2
-#      arm_freq=1750
-#  when: deploy_target != 'vagrant'
-- name: reboot machine
-  reboot:
-    msg: "Reboot by Ansible, because /boot/syscfg.txt config changed."
-    reboot_timeout: 180 # (= 3 minutes)

@@ -1,0 +1,107 @@
+---
+- name: Upgrade all packages to the latest version
+  apt:
+    name: "*"
+    state: latest
+    # Need the force_apt_get until
+    # https://github.com/ansible/ansible/issues/56832
+    force_apt_get: true
+  register: apt_update
+  retries: 5
+  until: apt_update is success
+
+# TODO remove this in future
+- name: Install pigpio
+  ansible.builtin.apt:
+    name: pigpio
+    state: absent
+
+- name: Clean up apt
+  apt:
+    autoremove: true
+    # Need the force_apt_get until
+    # https://github.com/ansible/ansible/issues/56832
+    force_apt_get: true
+
+# See: https://github.com/kubernetes/kubernetes/issues/71305
+#- name: Use iptables-legacy instead of nftables.
+#  alternatives:
+#    name: iptables
+#    path: /usr/sbin/iptables-legacy
+
+- name: Enable required cgroup features.
+  lineinfile:
+    path: /boot/cmdline.txt
+    backrefs: True
+    regexp: '(^.+rootwait(\s+(?!cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory)[\w=/\-\.]+)*)\s*$'
+    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
+    state: present
+
+- name: Create a firmware folder if it does not exist
+  file:
+    path: /boot/firmware
+    state: directory
+    mode: "0755"
+
+- name: Create the config files if they do not exist
+  file:
+    path: "{{ item }}"
+    state: touch
+  with_items:
+    - /boot/firmware/nobtcmd.txt
+    - /boot/firmware/syscfg.txt
+
+- name: Disable WiFi
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE WIFI"
+    block: |
+      dtoverlay=pi3-disable-wifi
+
+- name: Disable Bluetooth
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE BLUETOOTH"
+    block: |
+      dtoverlay=pi3-disable-bt
+  when: ansible_hostname != 'pi-eth'
+
+- name: Disable HDMI
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE HDMI"
+    block: |
+      hdmi_blanking=2
+
+- name: Disable Audio
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE AUDIO"
+    block: |
+      dtparam=audio=off
+
+- name: Disable Uart
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE DISABLE UART"
+    block: |
+      enable_uart=0
+
+- name: Trottle GPU
+  blockinfile:
+    path: /boot/firmware/syscfg.txt
+    marker: "# {mark} ANSIBLE THROTTLE GPU"
+    block: |
+      gpu_mem=16
+#- name: Overclock CPU
+#  blockinfile:
+#    path: /boot/firmware/syscfg.txt
+#    marker: "# {mark} ANSIBLE OVERCLOCK CPU"
+#    block: |
+#      over_voltage=2
+#      arm_freq=1750
+#  when: deploy_target != 'vagrant'
+- name: reboot machine
+  reboot:
+    msg: "Reboot by Ansible, because /boot/syscfg.txt config changed."
+    reboot_timeout: 180 # (= 3 minutes)
